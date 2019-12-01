@@ -58,24 +58,6 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
         
 //        configurateBodyTracking()
     }
-    
-    fileprivate func configurateBodyTracking(){
-        guard ARBodyTrackingConfiguration.isSupported else { return }
-        let configuration = ARBodyTrackingConfiguration()
-        configuration.isLightEstimationEnabled = true
-        configuration.automaticSkeletonScaleEstimationEnabled = true
-        configuration.frameSemantics.insert(.bodyDetection)
-        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
-    }
-    
-    fileprivate func configurateFaceTracking(){
-        // Create a face configuration session
-        guard ARFaceTrackingConfiguration.isSupported else { return }
-        let configuration = ARFaceTrackingConfiguration()
-        configuration.isLightEstimationEnabled = true
-        configuration.maximumNumberOfTrackedFaces = 10
-        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
-    }
         
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
@@ -356,6 +338,24 @@ extension SCNVector3 {
 
 //MARK: Face and Body Tracking Configuration
 extension ViewController{
+    
+    fileprivate func configurateBodyTracking(){
+        guard ARBodyTrackingConfiguration.isSupported else { return }
+        let configuration = ARBodyTrackingConfiguration()
+        configuration.isLightEstimationEnabled = true
+        configuration.automaticSkeletonScaleEstimationEnabled = true
+        configuration.frameSemantics.insert(.bodyDetection)
+        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+    }
+    
+    fileprivate func configurateFaceTracking(){
+        // Create a face configuration session
+        guard ARFaceTrackingConfiguration.isSupported else { return }
+        let configuration = ARFaceTrackingConfiguration()
+        configuration.isLightEstimationEnabled = true
+        configuration.maximumNumberOfTrackedFaces = 10
+        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+    }
     
     //COMMENT IT TO MAKE THE WORLD TRACKING WORK PROPERLY
     /*
