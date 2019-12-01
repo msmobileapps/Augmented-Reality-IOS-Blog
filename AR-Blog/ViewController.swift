@@ -68,18 +68,6 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
         sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
     }
     
-    fileprivate func configurateWorldTracking() {
-        // Create a world configuration session
-        let configuration = ARWorldTrackingConfiguration()
-        configuration.planeDetection = [.horizontal, .vertical]
-        configuration.frameSemantics.insert(.personSegmentationWithDepth)
-//        configuration.maximumNumberOfTrackedImages = 10
-        if #available(iOS 12.0, *) {
-            configuration.environmentTexturing = .automatic
-        }
-        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
-    }
-    
     fileprivate func configurateFaceTracking(){
         // Create a face configuration session
         guard ARFaceTrackingConfiguration.isSupported else { return }
@@ -117,11 +105,9 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
     }
     
     func coachingOverlayViewWillActivate(_ coachingOverlayView: ARCoachingOverlayView) {
-        
     }
 
     func coachingOverlayViewDidDeactivate(_ coachingOverlayView: ARCoachingOverlayView) {
-//        coachingOverlayView.removeFromSuperview()
     }
     
     @objc func handleLongTap(gestureRecognize: UILongPressGestureRecognizer) {
@@ -157,6 +143,101 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
         }
     }
     
+    private func loadLogoScene() {
+        guard let scene = SCNScene(named: "art.scnassets/msapps.scn") else {
+            print("Could not load scene!")
+            return
+        }
+
+        let childNodes = scene.rootNode.childNodes
+        for childNode in childNodes {
+            sceneNode.addChildNode(childNode)
+        }
+    }
+    
+    private func loadBoxScene() -> [SCNNode]? {
+        guard let scene = SCNScene(named: "art.scnassets/box.scn") else {
+            print("Could not load scene!")
+            return nil
+        }
+        let childNodes = scene.rootNode.childNodes
+        return childNodes
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+        if let planeAnchor = anchor as? ARPlaneAnchor,
+            let planeNode = node.childNodes.first,
+            let plane = planeNode.geometry as? SCNPlane {
+            
+                plane.width = CGFloat(planeAnchor.extent.x)
+                plane.height = CGFloat(planeAnchor.extent.z)
+                planeNode.position = SCNVector3Make(planeAnchor.center.x, 0, planeAnchor.center.z)
+        }
+        
+        //face recognition
+        if let faceAnchor = anchor as? ARFaceAnchor,
+            let faceNode = self.faceNode,
+            let faceGeometry = faceNode.geometry as? ARSCNFaceGeometry{
+
+            let material = faceGeometry.firstMaterial!
+            
+            if faceAnchor.blendShapes[.jawOpen]!.doubleValue > 0.6{
+                material.diffuse.contents = #imageLiteral(resourceName: "smile")
+            }
+            else{
+                 material.diffuse.contents = #imageLiteral(resourceName: "ms-c-logo")
+            }
+            
+            faceGeometry.update(from: faceAnchor.geometry)
+        }
+//        else if let bodyAnchor = anchor as? ARBodyAnchor{
+//
+//            print("PERSON DETECTED")
+//            let position = bodyAnchor.skeleton.jointLocalTransforms.first?.position()
+//            if !isVerticalPlaneSet{
+//                isVerticalPlaneSet = true
+//                bodyNode?.position = position!
+//            }
+//        }
+        
+    }
+    
+
+    //ARSCNViewDelegate
+
+    /*
+    func session(_ session: ARSession, didFailWithError error: Error) {
+        // Present an error message to the user
+        
+    }
+    
+    func sessionWasInterrupted(_ session: ARSession) {
+        // Inform the user that the session has been interrupted, for example, by presenting an overlay
+        
+    }
+    
+    func sessionInterruptionEnded(_ session: ARSession) {
+        // Reset tracking and/or remove existing anchors if consistent tracking is required
+        
+    }
+     */
+}
+
+//MARK: World Tracking Configuration
+extension ViewController{
+    
+    fileprivate func configurateWorldTracking() {
+        // Create a world configuration session
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = [.horizontal, .vertical]
+        configuration.frameSemantics.insert(.personSegmentationWithDepth)
+//        configuration.maximumNumberOfTrackedImages = 10
+        if #available(iOS 12.0, *) {
+            configuration.environmentTexturing = .automatic
+        }
+        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+    }
+    
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         if let planeAnchor = anchor as? ARPlaneAnchor {
             let plane = SCNPlane(width: CGFloat(planeAnchor.extent.x), height: CGFloat(planeAnchor.extent.z))
@@ -165,48 +246,48 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
             let planeNode = SCNNode(geometry: plane)
 
             planeNode.position = SCNVector3Make(planeAnchor.center.x, planeAnchor.center.x, planeAnchor.center.z)
-            //rotate the plane 90 degrees
+            //rotate the plane anchor 90 degrees
             planeNode.eulerAngles.x = -.pi / 2
 
             node.addChildNode(planeNode)
         }
         
-//        if let planeAnchor = anchor as? ARPlaneAnchor{
-//            if planeAnchor.alignment == .horizontal,
-//                !isHorizontalPlaneSet{
-//                isHorizontalPlaneSet = true
-//                sceneNode.scale = SCNVector3(0.1, 0.1, 0.1)
-//                sceneNode.position = SCNVector3Zero
-//                node.addChildNode(sceneNode)
-//            }
-//            else if planeAnchor.alignment == .vertical,
-//                !isVerticalPlaneSet{
-//                isVerticalPlaneSet = true
-//                let plane = SCNPlane(width: 0.4, height: 0.25)
-//                let material = SCNMaterial()
-//                material.diffuse.contents = UIImage(named: "ms-c-logo")
-//                plane.materials = [material]
-//
-//                let planeNode = SCNNode(geometry: plane)
-//
-//                planeNode.position = SCNVector3Make(planeAnchor.center.x, planeAnchor.center.x, planeAnchor.center.z)
-//                //rotate the plane 90 degrees
-//                planeNode.eulerAngles.x = -.pi / 2
-//
-//                node.addChildNode(planeNode)
-//            }
-//        }
-//        //check if the anchor made by tap
-//        else if anchor.name == "tap",
-//            let nodes = loadBoxScene(){
-//            sceneNode.scale = SCNVector3(0.1, 0.1, 0.1)
-//            for childNode in nodes {
-//                let position = SCNVector3(SCNVector3Zero.x, SCNVector3Zero.y, anchor.transform.position().z)
-//                childNode.position = position
-//                nodesBoxes.append(childNode)
-//                node.addChildNode(childNode)
-//            }
-//        }
+        if let planeAnchor = anchor as? ARPlaneAnchor{
+            if planeAnchor.alignment == .horizontal,
+                !isHorizontalPlaneSet{
+                isHorizontalPlaneSet = true
+                sceneNode.scale = SCNVector3(0.1, 0.1, 0.1)
+                sceneNode.position = SCNVector3Zero
+                node.addChildNode(sceneNode)
+            }
+            else if planeAnchor.alignment == .vertical,
+                !isVerticalPlaneSet{
+                isVerticalPlaneSet = true
+                let plane = SCNPlane(width: 0.4, height: 0.25)
+                let material = SCNMaterial()
+                material.diffuse.contents = UIImage(named: "ms-c-logo")
+                plane.materials = [material]
+
+                let planeNode = SCNNode(geometry: plane)
+
+                planeNode.position = SCNVector3Make(planeAnchor.center.x, planeAnchor.center.x, planeAnchor.center.z)
+                //rotate the plane anchor 90 degrees
+                planeNode.eulerAngles.x = -.pi / 2
+
+                node.addChildNode(planeNode)
+            }
+        }
+        //check if the anchor made by tap
+        else if anchor.name == "tap",
+            let nodes = loadBoxScene(){
+            sceneNode.scale = SCNVector3(0.1, 0.1, 0.1)
+            for childNode in nodes {
+                let position = SCNVector3(SCNVector3Zero.x, SCNVector3Zero.y, anchor.transform.position().z)
+                childNode.position = position
+                nodesBoxes.append(childNode)
+                node.addChildNode(childNode)
+            }
+        }
     }
     
     func renderer(_ renderer: SCNSceneRenderer, updateAtTime time: TimeInterval) {
@@ -216,7 +297,66 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
             updateCameraPosition(position)
         }
     }
+    
+    func updateCameraPosition(_ cameraPosition: SCNVector3) {
         
+        for node in nodesBoxes{
+            if cameraPosition.distance(to: node.position) < 2{
+                
+                changeNodeColorOf(node, to: .blue)
+            }
+            else{
+                changeNodeColorOf(node, to: .red)
+            }
+        }
+    }
+    
+    func changeNodeColorOf(_ node:SCNNode,to color:UIColor){
+        // Un-share the geometry by copying
+        node.geometry = node.geometry?.copy() as? SCNGeometry
+        // Un-share the material, too
+        node.geometry?.firstMaterial = node.geometry?.firstMaterial!.copy() as? SCNMaterial
+        // Now, we can change node's material without changing parent and other childs:
+        node.geometry?.firstMaterial?.diffuse.contents = color
+    }
+    
+    func addAnimation(node: SCNNode) {
+        let rotate = SCNAction.rotateBy(x: 0, y: CGFloat(Float.pi), z: 0, duration: 5.0)
+//        let scaleUp = SCNAction.scale(by: 1.1, duration: 2)
+//        let scaleDown = SCNAction.scale(by: 1/1.1, duration: 2)
+//        let scaleSequence = SCNAction.sequence([scaleUp, scaleDown])
+//        let rotateAndScale = SCNAction.group([rotate, scaleSequence])
+        let repeatForever = SCNAction.repeatForever(rotate)
+        node.runAction(repeatForever)
+    }
+}
+
+extension matrix_float4x4 {
+    func position() -> SCNVector3 {
+        return SCNVector3Make(columns.3.x, columns.3.y, columns.3.z)
+    }
+}
+
+extension SCNVector3 {
+    public func distance(to vector:SCNVector3) -> Float {
+        let xd = vector.x - self.x
+        let yd = vector.y - self.y
+        let zd = vector.z - self.z
+        
+        //calculate the distance
+        let distance = Float(sqrt(xd * xd + yd * yd + zd * zd))
+        
+        if (distance < 0){
+            return (distance * -1)
+        } else {
+            return (distance)
+        }
+    }
+}
+
+//MARK: Face and Body Tracking Configuration
+extension ViewController{
+    
     //COMMENT IT TO MAKE THE WORLD TRACKING WORK PROPERLY
     /*
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
@@ -275,151 +415,5 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate, AR
         // Return the height by getting just the y-value.
         let distanceFromHipOnY = abs(footTransform.columns.3.y)
         return distanceFromHipOnY
-    }
-    
-    func updateCameraPosition(_ cameraPosition: SCNVector3) {
-        
-        for node in nodesBoxes{
-            if cameraPosition.distance(to: node.position) < 2{
-                
-                changeNodeColorOf(node, to: .blue)
-            }
-            else{
-                changeNodeColorOf(node, to: .red)
-            }
-        }
-    }
-    
-    func changeNodeColorOf(_ node:SCNNode,to color:UIColor){
-        // Un-share the geometry by copying
-        node.geometry = node.geometry?.copy() as? SCNGeometry
-        // Un-share the material, too
-        node.geometry?.firstMaterial = node.geometry?.firstMaterial!.copy() as? SCNMaterial
-        // Now, we can change node's material without changing parent and other childs:
-        node.geometry?.firstMaterial?.diffuse.contents = color
-    }
-    
-    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
-        if let planeAnchor = anchor as? ARPlaneAnchor,
-            let planeNode = node.childNodes.first,
-            let plane = planeNode.geometry as? SCNPlane {
-            
-                plane.width = CGFloat(planeAnchor.extent.x)
-                plane.height = CGFloat(planeAnchor.extent.z)
-                planeNode.position = SCNVector3Make(planeAnchor.center.x, 0, planeAnchor.center.z)
-        }
-        
-        
-        //face recognition
-        if let faceAnchor = anchor as? ARFaceAnchor,
-            let faceNode = self.faceNode,
-            let faceGeometry = faceNode.geometry as? ARSCNFaceGeometry{
-
-            let material = faceGeometry.firstMaterial!
-            
-            if faceAnchor.blendShapes[.jawOpen]!.doubleValue > 0.6{
-                material.diffuse.contents = #imageLiteral(resourceName: "smile")
-            }
-            else{
-                 material.diffuse.contents = #imageLiteral(resourceName: "ms-c-logo")
-            }
-            
-//            print("JAW OPEN: ",faceAnchor.blendShapes[.jawOpen])
-//            print("MOUTH CLOSE: ",faceAnchor.blendShapes[.mouthClose])
-//            print("TOUNGUE OUT: ",faceAnchor.blendShapes[.tongueOut]!.doubleValue)
-            
-            faceGeometry.update(from: faceAnchor.geometry)
-        }
-//        else if let bodyAnchor = anchor as? ARBodyAnchor{
-//
-//            print("PERSON DETECTED")
-//            let position = bodyAnchor.skeleton.jointLocalTransforms.first?.position()
-//            if !isVerticalPlaneSet{
-//                isVerticalPlaneSet = true
-//                bodyNode?.position = position!
-//            }
-//        }
-        
-    }
-    
-    private func loadLogoScene() {
-        guard let scene = SCNScene(named: "art.scnassets/msapps.scn") else {
-            print("Could not load scene!")
-            return
-        }
-
-        let childNodes = scene.rootNode.childNodes
-        for childNode in childNodes {
-            sceneNode.addChildNode(childNode)
-        }
-    }
-    
-    private func loadBoxScene() -> [SCNNode]? {
-        guard let scene = SCNScene(named: "art.scnassets/box.scn") else {
-            print("Could not load scene!")
-            return nil
-        }
-        let childNodes = scene.rootNode.childNodes
-        return childNodes
-    }
-    
-    func addAnimation(node: SCNNode) {
-        let rotate = SCNAction.rotateBy(x: 0, y: CGFloat(Float.pi), z: 0, duration: 5.0)
-//        let scaleUp = SCNAction.scale(by: 1.1, duration: 2)
-//        let scaleDown = SCNAction.scale(by: 1/1.1, duration: 2)
-//        let scaleSequence = SCNAction.sequence([scaleUp, scaleDown])
-//        let rotateAndScale = SCNAction.group([rotate, scaleSequence])
-        let repeatForever = SCNAction.repeatForever(rotate)
-        node.runAction(repeatForever)
-    }
-    
-
-    // MARK: - ARSCNViewDelegate
-    
-/*
-    // Override to create and configure nodes for anchors added to the view's session.
-    func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
-        let node = SCNNode()
-     
-        return node
-    }
-*/
-    
-    func session(_ session: ARSession, didFailWithError error: Error) {
-        // Present an error message to the user
-        
-    }
-    
-    func sessionWasInterrupted(_ session: ARSession) {
-        // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
-    }
-    
-    func sessionInterruptionEnded(_ session: ARSession) {
-        // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
-    }
-}
-
-extension matrix_float4x4 {
-    func position() -> SCNVector3 {
-        return SCNVector3Make(columns.3.x, columns.3.y, columns.3.z)
-    }
-}
-
-extension SCNVector3 {
-    public func distance(to vector:SCNVector3) -> Float {
-        let xd = vector.x - self.x
-        let yd = vector.y - self.y
-        let zd = vector.z - self.z
-        
-        //calculate the distance
-        let distance = Float(sqrt(xd * xd + yd * yd + zd * zd))
-        
-        if (distance < 0){
-            return (distance * -1)
-        } else {
-            return (distance)
-        }
     }
 }
